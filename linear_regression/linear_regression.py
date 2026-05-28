@@ -1,3 +1,4 @@
+import os
 import click
 import logging
 from rich.logging import RichHandler
@@ -5,6 +6,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import statsmodels.formula.api as smf
+from Bio import Phylo
 from scipy import stats
 
 def univariate_linear_regression(x,y,titles=None,vname=None,fig_=None,axs_=None,responsvari=None,panellabel=None):
@@ -38,6 +40,27 @@ def covariate_linear_regression(x,y,z):
     data = pd.DataFrame({"y":y,"x":x,"z":z})
     model = smf.ols(formula='y ~ x + z', data=data).fit()
     model.summary()
+
+def getr2tdis(Tree):
+    Root = Tree.root
+    r2t_dis = []
+    for tip in Tree.get_terminals():
+        r2t_dis.append(Root.distance(tip))
+    r2t_dis_narray = np.array(r2t_dis)
+    cv = np.std(r2t_dis_narray)/np.mean(r2t_dis_narray)
+    return cv
+
+def getroot2tipdistancefrompath(treepath):
+    cvs = []
+    fns = []
+    with open(treepath,"r") as f:
+        for li in f:
+            Tree = Phylo.read(li.strip(),'newick')
+            cv = getr2tdis(Tree)
+            cvs += [cv]
+            fns += [os.path.basename(li.strip())]
+    df = pd.DataFrame.from_dict({"MSA":fns,"CV":cvs},orient="columns")
+    return df
 
 @click.group(context_settings={'help_option_names': ['-h', '--help']})
 @click.option('--verbosity', '-v', type=click.Choice(['info', 'debug']), default='info', help="Verbosity level, default = info.")
